@@ -116,27 +116,27 @@ void CControls::OnConsoleInit()
 {
 	// game commands
 	{
-		static CInputState s_State = {this, {&m_aInputDirectionLeft[0], &m_aInputDirectionLeft[1]}};
+		static CInputState s_State = {this, {&m_aInputDirectionLeft[0], &m_aInputDirectionLeft[1]}}; 
 		Console()->Register("+left", "", CFGFLAG_CLIENT, ConKeyInputState, &s_State, "Move left");
 	}
 	{
-		static CInputState s_State = {this, {&m_aInputDirectionRight[0], &m_aInputDirectionRight[1]}};
+		static CInputState s_State = {this, {&m_aInputDirectionRight[0], &m_aInputDirectionRight[1]}}; 
 		Console()->Register("+right", "", CFGFLAG_CLIENT, ConKeyInputState, &s_State, "Move right");
 	}
 	{
-		static CInputState s_State = {this, {&m_aInputData[0].m_Jump, &m_aInputData[1].m_Jump}};
+		static CInputState s_State = {this, {&m_aInputData[0].m_Jump, &m_aInputData[1].m_Jump}}; 
 		Console()->Register("+jump", "", CFGFLAG_CLIENT, ConKeyInputState, &s_State, "Jump");
 	}
 	{
-		static CInputState s_State = {this, {&m_aInputData[0].m_Hook, &m_aInputData[1].m_Hook}};
+		static CInputState s_State = {this, {&m_aInputData[0].m_Hook, &m_aInputData[1].m_Hook}}; 
 		Console()->Register("+hook", "", CFGFLAG_CLIENT, ConKeyInputState, &s_State, "Hook");
 	}
 	{
-		static CInputState s_State = {this, {&m_aInputData[0].m_Fire, &m_aInputData[1].m_Fire}};
+		static CInputState s_State = {this, {&m_aInputData[0].m_Fire, &m_aInputData[1].m_Fire}}; 
 		Console()->Register("+fire", "", CFGFLAG_CLIENT, ConKeyInputCounter, &s_State, "Fire");
 	}
 	{
-		static CInputState s_State = {this, {&m_aShowHookColl[0], &m_aShowHookColl[1]}};
+		static CInputState s_State = {this, {&m_aShowHookColl[0], &m_aShowHookColl[1]}}; 
 		Console()->Register("+showhookcoll", "", CFGFLAG_CLIENT, ConKeyInputState, &s_State, "Show Hook Collision");
 	}
 
@@ -465,7 +465,7 @@ void CControls::OnRender()
 			if(Dist > (float)g_Config.m_ClAutoFightRange)
 				continue;
 
-			const CClientData &Data = GameClient()->m_aClients[i];
+			const CGameClient::CClientData &Data = GameClient()->m_aClients[i];
 			int FreezeTicksLeft = Data.m_FreezeEnd - Tick;
 			bool Frozen = Data.m_DeepFrozen || Data.m_LiveFrozen || FreezeTicksLeft > 0;
 			bool ThawingSoon = Frozen && FreezeTicksLeft > 0 && FreezeTicksLeft < ThawWindow;
