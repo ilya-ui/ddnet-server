@@ -3077,5 +3077,19 @@ void CMenus::RenderSettings456(CUIRect MainView)
 		g_Config.m_ClAimbotShowRange ^= 1;
 
 	MainView.HSplitTop(20.0f, &Button, &MainView);
+	if(DoButton_CheckBox(&g_Config.m_ClAutoFight, "Super Auto Fighting", g_Config.m_ClAutoFight, &Button))
+		g_Config.m_ClAutoFight ^= 1;
+
+	MainView.HSplitTop(20.0f, &Button, &MainView);
+	if(DoButton_CheckBox(&g_Config.m_ClAutoFightAvoidFreeze, "Auto Fight Avoid Freeze", g_Config.m_ClAutoFightAvoidFreeze, &Button))
+		g_Config.m_ClAutoFightAvoidFreeze ^= 1;
+
+	MainView.HSplitTop(20.0f, &Button, &MainView);
 	Ui()->DoScrollbarOption(&g_Config.m_ClAimbotRange, &g_Config.m_ClAimbotRange, &Button, "Aimbot Range", 100, 2000);
+
+	MainView.HSplitTop(20.0f, &Button, &MainView);
+	Ui()->DoScrollbarOption(&g_Config.m_ClAutoFightRange, &g_Config.m_ClAutoFightRange, &Button, "Auto Fight Range", 200, 2000);
+
+	MainView.HSplitTop(20.0f, &Button, &MainView);
+	Ui()->DoScrollbarOption(&g_Config.m_ClAutoFightFreezeSearch, &g_Config.m_ClAutoFightFreezeSearch, &Button, "Freeze Search Radius", 64, 800);
 }

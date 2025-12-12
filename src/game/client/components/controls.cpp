@@ -16,6 +16,7 @@
 #include <game/client/components/scoreboard.h>
 #include <game/client/gameclient.h>
 #include <game/collision.h>
+#include <game/mapitems.h>
 
 #include <cmath>
 
@@ -392,6 +393,172 @@ void CControls::OnRender()
 					mix((float)Prev.m_Y, (float)Cur.m_Y, IntraTick)
 				);
 				m_aMousePos[g_Config.m_ClDummy] = EnemyPos - LocalPos;
+			}
+		}
+	}
+
+	// Super auto fighting
+	if(g_Config.m_ClAutoFight && GameClient()->m_Snap.m_pLocalCharacter && !GameClient()->m_Snap.m_SpecInfo.m_Active)
+	{
+		const int Dummy = g_Config.m_ClDummy;
+		const int LocalId = GameClient()->m_Snap.m_LocalClientId;
+		vec2 LocalPos = GameClient()->m_LocalCharacterPos;
+
+		auto IsFreezeTile = [&](vec2 Pos) {
+			int Index = Collision()->GetPureMapIndex(Pos);
+			int Tile = Collision()->GetTileIndex(Index);
+			int Front = Collision()->GetFrontTileIndex(Index);
+			return Tile == TILE_FREEZE || Tile == TILE_DFREEZE || Tile == TILE_LFREEZE || Front == TILE_FREEZE || Front == TILE_DFREEZE || Front == TILE_LFREEZE;
+		};
+
+		auto TriggerFire = [&]() {
+			if((m_aInputData[Dummy].m_Fire & 1) == 0)
+				m_aInputData[Dummy].m_Fire++;
+		};
+
+		auto FindNearestFreeze = [&](vec2 Center, float Radius, vec2 *pOutPos) {
+			bool Found = false;
+			float BestDist = Radius;
+			for(int dx = -g_Config.m_ClAutoFightFreezeSearch; dx <= g_Config.m_ClAutoFightFreezeSearch; dx += 32)
+			{
+				for(int dy = -g_Config.m_ClAutoFightFreezeSearch; dy <= g_Config.m_ClAutoFightFreezeSearch; dy += 32)
+				{
+					vec2 Pos = Center + vec2((float)dx, (float)dy);
+					if(IsFreezeTile(Pos))
+					{
+						float Dist = distance(Center, Pos);
+						if(Dist < BestDist)
+						{
+							BestDist = Dist;
+							*pOutPos = Pos;
+							Found = true;
+						}
+					}
+				}
+			}
+			return Found;
+		};
+
+		int TargetId = -1;
+		vec2 TargetPos(0.0f, 0.0f);
+		bool TargetThawingSoon = false;
+		float ClosestDist = (float)g_Config.m_ClAutoFightRange;
+
+		const int Tick = Client()->GameTick(Dummy);
+		const int ThawWindow = Client()->GameTickSpeed() * 2; // ~2 seconds before unfreeze
+
+		for(int i = 0; i < MAX_CLIENTS; i++)
+		{
+			if(i == LocalId)
+				continue;
+			if(!GameClient()->m_Snap.m_aCharacters[i].m_Active)
+				continue;
+
+			CNetObj_Character Prev = GameClient()->m_Snap.m_aCharacters[i].m_Prev;
+			CNetObj_Character Cur = GameClient()->m_Snap.m_aCharacters[i].m_Cur;
+			float IntraTick = Client()->IntraGameTick(Dummy);
+			vec2 EnemyPos = vec2(
+				mix((float)Prev.m_X, (float)Cur.m_X, IntraTick),
+				mix((float)Prev.m_Y, (float)Cur.m_Y, IntraTick));
+
+			float Dist = distance(LocalPos, EnemyPos);
+			if(Dist > (float)g_Config.m_ClAutoFightRange)
+				continue;
+
+			const CClientData &Data = GameClient()->m_aClients[i];
+			int FreezeTicksLeft = Data.m_FreezeEnd - Tick;
+			bool Frozen = Data.m_DeepFrozen || Data.m_LiveFrozen || FreezeTicksLeft > 0;
+			bool ThawingSoon = Frozen && FreezeTicksLeft > 0 && FreezeTicksLeft < ThawWindow;
+			bool EnemyOnFreeze = IsFreezeTile(EnemyPos);
+			bool Prefer = ThawingSoon && !EnemyOnFreeze;
+
+			if(Prefer)
+			{
+				if(TargetId == -1 || !TargetThawingSoon || Dist < ClosestDist)
+				{
+					TargetId = i;
+					TargetPos = EnemyPos;
+					TargetThawingSoon = true;
+					ClosestDist = Dist;
+				}
+				continue;
+			}
+
+			if(TargetThawingSoon)
+				continue;
+
+			if(Dist < ClosestDist)
+			{
+				TargetId = i;
+				TargetPos = EnemyPos;
+				ClosestDist = Dist;
+			}
+		}
+
+		if(TargetId != -1)
+		{
+			m_aMousePos[Dummy] = TargetPos - LocalPos;
+			float Dist = distance(LocalPos, TargetPos);
+
+			int MoveDir = 0;
+			if(Dist > 160.0f)
+			{
+				if(TargetPos.x > LocalPos.x + 8.0f)
+					MoveDir = 1;
+				else if(TargetPos.x < LocalPos.x - 8.0f)
+					MoveDir = -1;
+			}
+
+			if(g_Config.m_ClAutoFightAvoidFreeze)
+			{
+				vec2 Ahead = LocalPos + vec2((float)MoveDir * 32.0f, 0.0f);
+				if(IsFreezeTile(Ahead))
+					MoveDir = 0;
+			}
+
+			m_aInputDirectionLeft[Dummy] = MoveDir < 0;
+			m_aInputDirectionRight[Dummy] = MoveDir > 0;
+
+			if(Dist < (float)g_Config.m_ClAutoFightRange)
+				m_aInputData[Dummy].m_Hook = 1;
+
+			if(Dist < 135.0f)
+			{
+				m_aInputData[Dummy].m_WantedWeapon = WEAPON_HAMMER + 1;
+				TriggerFire();
+			}
+
+			if(TargetThawingSoon && !IsFreezeTile(TargetPos))
+			{
+				vec2 FreezePos;
+				if(FindNearestFreeze(TargetPos, (float)g_Config.m_ClAutoFightFreezeSearch, &FreezePos))
+				{
+					int PushDir = 0;
+					if(FreezePos.x > TargetPos.x + 8.0f)
+						PushDir = 1;
+					else if(FreezePos.x < TargetPos.x - 8.0f)
+						PushDir = -1;
+
+					if(g_Config.m_ClAutoFightAvoidFreeze)
+					{
+						vec2 Ahead = LocalPos + vec2((float)PushDir * 32.0f, 0.0f);
+						if(IsFreezeTile(Ahead))
+							PushDir = 0;
+					}
+
+					if(PushDir != 0)
+					{
+						m_aInputDirectionLeft[Dummy] = PushDir < 0;
+						m_aInputDirectionRight[Dummy] = PushDir > 0;
+					}
+
+					m_aInputData[Dummy].m_Hook = 1;
+					if(Dist < 220.0f)
+					{
+						m_aInputData[Dummy].m_WantedWeapon = WEAPON_HAMMER + 1;
+						TriggerFire();
+					}
+				}
 			}
 		}
 	}
