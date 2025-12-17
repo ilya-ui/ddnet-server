@@ -33,6 +33,7 @@
 #include "components/scoreboard.h"
 #include "components/skins.h"
 #include "components/skins7.h"
+#include "components/snake.h"
 #include "components/sounds.h"
 #include "components/spectator.h"
 #include "components/statboard.h"
@@ -119,6 +120,7 @@ void CGameClient::OnConsoleInit()
 					      &m_CountryFlags,
 					      &m_MapImages,
 					      &m_MapTravel,
+					      &m_Snake,
 					      &m_Effects, // doesn't render anything, just updates effects
 					      &m_Binds,
 					      &m_Binds.m_SpecialBinds,

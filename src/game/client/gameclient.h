@@ -62,6 +62,7 @@
 #include "components/race_demo.h"
 #include "components/scoreboard.h"
 #include "components/skins.h"
+#include "components/snake.h"
 #include "components/skins7.h"
 #include "components/sounds.h"
 #include "components/spectator.h"
@@ -174,6 +175,7 @@ public:
 	CItems m_Items;
 	CMapImages m_MapImages;
 	CMapTravel m_MapTravel;
+	CSnakeGame m_Snake;
 
 	CMapLayers m_MapLayersBackground = CMapLayers{ERenderType::RENDERTYPE_BACKGROUND};
 	CMapLayers m_MapLayersForeground = CMapLayers{ERenderType::RENDERTYPE_FOREGROUND};

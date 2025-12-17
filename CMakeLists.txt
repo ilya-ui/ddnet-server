@@ -2426,6 +2426,8 @@ if(CLIENT)
     components/skins.h
     components/skins7.cpp
     components/skins7.h
+    components/snake.cpp
+    components/snake.h
     components/sounds.cpp
     components/sounds.h
     components/spectator.cpp
@@ -2824,6 +2826,8 @@ if(SERVER)
     entities/vodkabottle.h
     entities/snake.cpp
     entities/snake.h
+    entities/snake_board.cpp
+    entities/snake_board.h
     entities/light.h
     entities/pickup.cpp
     entities/pickup.h

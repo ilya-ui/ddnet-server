@@ -669,78 +669,25 @@ void CCharacter::FireWeapon()
 		if(m_Core.m_HammerHitDisabled)
 			break;
 
-		CEntity *apEnts[MAX_CLIENTS];
-		int Hits = 0;
-		int Num = GameServer()->m_World.FindEntities(ProjStartPos, GetProximityRadius() * 0.5f, apEnts,
-			MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 
-		for(int i = 0; i < Num; ++i)
-		{
-			auto *pTarget = static_cast<CCharacter *>(apEnts[i]);
-
-			if((pTarget == this || (pTarget->IsAlive() && !CanCollide(pTarget->GetPlayer()->GetCid()))))
-				continue;
-
-			// set his velocity to fast upward (for now)
-			if(length(pTarget->m_Pos - ProjStartPos) > 0.0f)
-				GameServer()->CreateHammerHit(pTarget->m_Pos - normalize(pTarget->m_Pos - ProjStartPos) * GetProximityRadius() * 0.5f, TeamMask());
-			else
-				GameServer()->CreateHammerHit(ProjStartPos, TeamMask());
-
-			vec2 Dir;
-			if(length(pTarget->m_Pos - m_Pos) > 0.0f)
-				Dir = normalize(pTarget->m_Pos - m_Pos);
-			else
-				Dir = vec2(0.f, -1.f);
-
-			float Strength = GetTuning(m_TuneZone)->m_HammerStrength;
-
-			vec2 Temp = pTarget->m_Core.m_Vel + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f;
-			Temp = ClampVel(pTarget->m_MoveRestrictions, Temp);
-			Temp -= pTarget->m_Core.m_Vel;
-			pTarget->TakeDamage((vec2(0.f, -1.0f) + Temp) * Strength, g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
-				m_pPlayer->GetCid(), m_Core.m_ActiveWeapon);
-			
-			if(m_pPlayer->m_FreezeHammer)
-				pTarget->Freeze();
-			else
-				pTarget->UnFreeze();
-
-			Antibot()->OnHammerHit(m_pPlayer->GetCid(), pTarget->GetPlayer()->GetCid());
-
-			Hits++;
-		}
-
-		// if we Hit anything, we have to wait for the reload
-		if(Hits)
-		{
-			float FireDelay = GetTuning(m_TuneZone)->m_HammerHitFireDelay;
-			m_ReloadTimer = FireDelay * Server()->TickSpeed() / 1000;
-		}
-
-		// Check for laser doors to toggle
-		CEntity *pDoorEnt = GameWorld()->FindFirst(CGameWorld::ENTTYPE_LASER);
-		while(pDoorEnt)
-		{
-			CLaserDoor *pDoor = dynamic_cast<CLaserDoor *>(pDoorEnt);
-			if(pDoor && distance(m_Pos, pDoor->GetPos()) < 100.0f)
-			{
-				pDoor->Toggle(m_pPlayer->GetCid());
-				break;
-			}
-			pDoorEnt = pDoorEnt->TypeNext();
-		}
-
-		// BigHammer effect - create ONE giant laser hammer that hits HARD
+		// BigHammer effect - replace normal hammer
 		if(m_pPlayer->m_HasBigHammer)
 		{
-			const float BigHammerLength = 400.0f; // Огромный лазер
-			const float BigHammerRadius = 300.0f; // Радиус поражения
+			const float BigHammerLength = 800.0f; // Longer range
+			const float BigHammerRadius = 400.0f; // Larger radius
 
-			// Создаём один огромный лазер в направлении удара
-			new CLaser(GameWorld(), m_Pos, Direction, BigHammerLength, m_pPlayer->GetCid(), WEAPON_LASER);
+			// Create "Huge" visual: 5 lasers with slight spread
+			for(int i = -2; i <= 2; i++)
+			{
+				float Angle = i * 0.05f; // Small angle spread
+				vec2 LaserDir = rotate(Direction, Angle);
+				new CLaser(GameWorld(), m_Pos, LaserDir, BigHammerLength, m_pPlayer->GetCid(), WEAPON_LASER);
+			}
+            
+            // Add a visual explosion effect at the end/impact
+            GameServer()->CreateSound(m_Pos, SOUND_GRENADE_EXPLODE, TeamMask());
 
-			// Мощный knockback всем в радиусе
+			// Powerful Knockback
 			CEntity *apBigEnts[MAX_CLIENTS];
 			int BigNum = GameServer()->m_World.FindEntities(m_Pos + Direction * 200.0f, BigHammerRadius, apBigEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 
@@ -752,13 +699,65 @@ void CCharacter::FireWeapon()
 				if(!pTarget->IsAlive() || !CanCollide(pTarget->GetPlayer()->GetCid()))
 					continue;
 
-				// ОЧЕНЬ сильный удар
-				float Strength = GetTuning(m_TuneZone)->m_HammerStrength * 5.0f;
+				// EXTREME STRENGTH
+				float Strength = GetTuning(m_TuneZone)->m_HammerStrength * 20.0f; // 20x Strength
 				pTarget->TakeDamage(Direction * Strength, 0, m_pPlayer->GetCid(), WEAPON_HAMMER);
 				pTarget->UnFreeze();
 				GameServer()->CreateHammerHit(pTarget->m_Pos, TeamMask());
-				GameServer()->CreateSound(pTarget->m_Pos, SOUND_NINJA_HIT, TeamMask());
 			}
+		}
+		else
+		{
+			// Standard Hammer Logic
+			CEntity *apEnts[MAX_CLIENTS];
+			int Hits = 0;
+			int Num = GameServer()->m_World.FindEntities(ProjStartPos, GetProximityRadius() * 0.5f, apEnts,
+				MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
+
+			for(int i = 0; i < Num; ++i)
+			{
+				auto *pTarget = static_cast<CCharacter *>(apEnts[i]);
+
+				if((pTarget == this || (pTarget->IsAlive() && !CanCollide(pTarget->GetPlayer()->GetCid()))))
+					continue;
+
+				// set his velocity to fast upward (for now)
+				if(length(pTarget->m_Pos - ProjStartPos) > 0.0f)
+					GameServer()->CreateHammerHit(pTarget->m_Pos - normalize(pTarget->m_Pos - ProjStartPos) * GetProximityRadius() * 0.5f, TeamMask());
+				else
+					GameServer()->CreateHammerHit(ProjStartPos, TeamMask());
+
+				vec2 Dir;
+				if(length(pTarget->m_Pos - m_Pos) > 0.0f)
+					Dir = normalize(pTarget->m_Pos - m_Pos);
+				else
+					Dir = vec2(0.f, -1.f);
+
+				float Strength = GetTuning(m_TuneZone)->m_HammerStrength;
+
+				vec2 Temp = pTarget->m_Core.m_Vel + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f;
+				Temp = ClampVel(pTarget->m_MoveRestrictions, Temp);
+				Temp -= pTarget->m_Core.m_Vel;
+				pTarget->TakeDamage((vec2(0.f, -1.0f) + Temp) * Strength, g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
+					m_pPlayer->GetCid(), m_Core.m_ActiveWeapon);
+				
+				if(m_pPlayer->m_FreezeHammer)
+					pTarget->Freeze();
+				else
+					pTarget->UnFreeze();
+
+				Antibot()->OnHammerHit(m_pPlayer->GetCid(), pTarget->GetPlayer()->GetCid());
+
+				Hits++;
+			}
+
+			// if we Hit anything, we have to wait for the reload
+			if(Hits)
+			{
+				float FireDelay = GetTuning(m_TuneZone)->m_HammerHitFireDelay;
+				m_ReloadTimer = FireDelay * Server()->TickSpeed() / 1000;
+			}
+
 		}
 	}
 	break;

@@ -16,6 +16,7 @@
 #include <game/server/entities/ufo.h>
 #include <game/server/entities/vodkabottle.h>
 #include <game/server/entities/snake.h>
+#include <game/server/entities/snake_board.h>
 #include <game/server/entities/spider.h>
 #include <game/server/gamemodes/DDRace.h>
 #include <game/server/player.h>
@@ -805,45 +806,35 @@ void CGameContext::ConEars(IConsole::IResult *pResult, void *pUserData)
 void CGameContext::ConSnake(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
+	int ClientId = pResult->m_ClientId;
+	CCharacter *pChr = pSelf->GetPlayerChar(ClientId);
+	if(!pChr || !pChr->IsAlive())
 		return;
 
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(!pChr)
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "snake", "You need to be alive!");
-		return;
-	}
-
-	vec2 Pos = pChr->GetPos();
-	new CLaserSnake(&pSelf->m_World, Pos, pResult->m_ClientId);
-	pSelf->SendChat(-1, TEAM_ALL, "*** LASER SNAKE SPAWNED! RUN! ***");
-	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "snake", "Laser snake spawned! It will hunt players and grow when eating them.");
+	// Remove existing board if any
+	CSnakeBoard *pSnake = (CSnakeBoard *)pSelf->m_World.FindFirst(CGameWorld::ENTTYPE_SNAKE);
+	
+	new CSnakeBoard(&pSelf->m_World, pChr->m_Pos + vec2(0, -200), ClientId);
+	pSelf->SendChatTarget(ClientId, "Snake Game Started! Hit the board with Hammer to Reset.");
 }
 
 void CGameContext::ConUnSnake(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
-
-	// Remove all snakes
-	int Count = 0;
-	CEntity *pEnt = pSelf->m_World.FindFirst(CGameWorld::ENTTYPE_LASER);
-	while(pEnt)
+	CSnakeBoard *pSnake = (CSnakeBoard *)pSelf->m_World.FindFirst(CGameWorld::ENTTYPE_SNAKE);
+    int Count = 0;
+	while(pSnake)
 	{
-		CEntity *pNext = pEnt->TypeNext();
-		CLaserSnake *pSnake = dynamic_cast<CLaserSnake *>(pEnt);
-		if(pSnake)
-		{
-			pSnake->Reset();
-			Count++;
-		}
-		pEnt = pNext;
+		pSnake->Reset(); // Mark for destroy
+        Count++;
+		pSnake = (CSnakeBoard *)pSnake->TypeNext();
 	}
-
-	char aBuf[64];
-	str_format(aBuf, sizeof(aBuf), "Removed %d snake(s).", Count);
-	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "snake", aBuf);
+	
+    char aBuf[128];
+    str_format(aBuf, sizeof(aBuf), "Removed %d Snake Boards.", Count);
+	pSelf->SendChatTarget(pResult->m_ClientId, aBuf);
 }
+
 
 void CGameContext::ConFerrisWheel(IConsole::IResult *pResult, void *pUserData)
 {

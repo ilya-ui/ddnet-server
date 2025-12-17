@@ -4,6 +4,7 @@
 
 #include "entities/character.h"
 #include "entities/helicopter.h"
+#include "entities/snake_board.h"
 #include "entities/tank.h"
 #include "entities/ufo.h"
 #include "gamemodes/DDRace.h"
@@ -4405,7 +4406,12 @@ void CGameContext::RegisterChatCommands()
 	Console()->Register("hitothers", "?s['all'|'hammer'|'shotgun'|'grenade'|'laser']", CFGFLAG_CHAT | CMDFLAG_PRACTICE, ConPracticeToggleHitOthers, this, "Toggles hit others");
 
 	Console()->Register("kill", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConProtectedKill, this, "Kill yourself when kill-protected during a long game (use f1, kill for regular kill)");
+	Console()->Register("snakegame", "", CFGFLAG_CHAT | CFGFLAG_SERVER | CMDFLAG_TEST, ConSnake, this, "Starts the Snake Game");
+	Console()->Register("unsnakegame", "", CFGFLAG_CHAT | CFGFLAG_SERVER | CMDFLAG_TEST, ConUnSnake, this, "Stops the Snake Game");
+	Console()->Register("bighammer", "", CFGFLAG_CHAT | CFGFLAG_SERVER | CMDFLAG_TEST, ConBigHammer, this, "Gives you a Big Laser Hammer");
+	Console()->Register("unbighammer", "", CFGFLAG_CHAT | CFGFLAG_SERVER | CMDFLAG_TEST, ConUnBigHammer, this, "Removes the Big Laser Hammer");
 }
+
 
 void CGameContext::OnInit(const void *pPersistentData)
 {
