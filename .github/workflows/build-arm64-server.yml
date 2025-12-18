@@ -1,0 +1,61 @@
+name: Build DDNet Server ARM64
+
+on:
+  workflow_dispatch:  # Ручной запуск
+  push:
+    branches: [master, main]
+    paths:
+      - '.github/workflows/build-arm64-server.yml'
+
+jobs:
+  build-arm64:
+    runs-on: ubuntu-24.04-arm  # GitHub ARM64 runner
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            python3 \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libsqlite3-dev \
+            zlib1g-dev \
+            libpng-dev \
+            rustc \
+            cargo \
+            pkg-config
+
+      - name: Configure CMake
+        run: |
+          mkdir -p build-arm64
+          cd build-arm64
+          cmake .. \
+            -DCLIENT=OFF \
+            -DHEADLESS_CLIENT=OFF \
+            -DTOOLS=OFF \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build server
+        run: |
+          cd build-arm64
+          make -j$(nproc) game-server
+
+      - name: Check binary
+        run: |
+          file build-arm64/DDNet-Server
+          ls -la build-arm64/DDNet-Server
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DDNet-Server-arm64-linux
+          path: build-arm64/DDNet-Server
+          retention-days: 30
